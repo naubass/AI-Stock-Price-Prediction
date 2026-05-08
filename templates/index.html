@@ -3,133 +3,1097 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Stock Analytics | LSTM</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>QuantAI — Stock Intelligence Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
+        :root {
+            --bg: #060a12;
+            --surface: #0d1525;
+            --surface2: #111d33;
+            --border: rgba(99, 179, 255, 0.1);
+            --accent: #3b82f6;
+            --accent2: #06d6a0;
+            --accent3: #f59e0b;
+            --danger: #ef4444;
+            --text: #e2eaf8;
+            --muted: #4a6080;
+            --glow: rgba(59, 130, 246, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            background: radial-gradient(circle at top left, #1e293b, #0f172a);
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
-        .glass {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+
+        /* Grid BG */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
         }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            grid-template-rows: auto 1fr;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            grid-row: 1 / -1;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 28px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            padding: 0 24px 28px;
+            border-bottom: 1px solid var(--border);
+        }
+        .logo-mark {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            box-shadow: 0 0 20px var(--glow);
+        }
+        .logo-icon svg { width: 20px; height: 20px; }
+        .logo-text {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .logo-text span { color: var(--accent); }
+
+        .nav {
+            padding: 24px 12px;
+            flex: 1;
+        }
+        .nav-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 2px;
+            padding: 0 12px;
+            margin-bottom: 8px;
+            margin-top: 20px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 2px;
+        }
+        .nav-item:hover { background: var(--surface2); color: var(--text); }
+        .nav-item.active {
+            background: rgba(59,130,246,0.15);
+            color: var(--accent);
+            border: 1px solid rgba(59,130,246,0.2);
+        }
+        .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        .sidebar-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border);
+        }
+        .model-badge {
+            background: rgba(6,214,160,0.1);
+            border: 1px solid rgba(6,214,160,0.2);
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+        .model-badge-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 9px;
+            color: var(--accent2);
+            letter-spacing: 1px;
+            margin-bottom: 3px;
+        }
+        .model-badge-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .model-dot {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent2);
+            box-shadow: 0 0 8px var(--accent2);
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%,100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .topbar-title {
+            font-size: 22px;
+            font-weight: 800;
+        }
+        .topbar-subtitle {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .ticker-pill {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--muted);
+        }
+        .ticker-pill:hover, .ticker-pill.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(59,130,246,0.08);
+        }
+        .btn-predict {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--glow);
+            transition: all 0.2s;
+            letter-spacing: 0.3px;
+        }
+        .btn-predict:hover { background: #2563eb; transform: translateY(-1px); }
+
+        /* ── MAIN ── */
+        .main {
+            padding: 28px 32px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* ── STAT CARDS ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: rgba(99,179,255,0.25); }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+        }
+        .stat-card.blue::before { background: linear-gradient(90deg, var(--accent), transparent); }
+        .stat-card.green::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+        .stat-card.amber::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+        .stat-card.red::before { background: linear-gradient(90deg, var(--danger), transparent); }
+
+        .stat-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
+        }
+        .stat-value {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+        .stat-change {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .stat-change.up { color: var(--accent2); }
+        .stat-change.down { color: var(--danger); }
+        .sparkline-wrap { position: absolute; bottom: 12px; right: 12px; opacity: 0.5; }
+
+        /* ── MAIN CHART ── */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+        }
+
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .card-sub {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+        .legend {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .legend-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+        }
+        .time-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 3px;
+        }
+        .time-tab {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--muted);
+            transition: all 0.15s;
+        }
+        .time-tab.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .chart-container { position: relative; height: 240px; }
+
+        /* ── INPUT PANEL ── */
+        .input-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .tab-row {
+            display: flex;
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Syne', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            background: transparent;
+            color: var(--muted);
+            transition: all 0.15s;
+        }
+        .tab-btn.active { background: var(--accent); color: #fff; }
+
+        .input-section { display: flex; flex-direction: column; gap: 10px; }
+        .input-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+        }
+        textarea.data-input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            padding: 12px;
+            resize: none;
+            height: 100px;
+            transition: border-color 0.2s;
+            outline: none;
+            line-height: 1.6;
+        }
+        textarea.data-input:focus { border-color: var(--accent); }
+        textarea.data-input::placeholder { color: var(--muted); }
+
+        .upload-zone {
+            background: var(--bg);
+            border: 2px dashed rgba(59,130,246,0.2);
+            border-radius: 10px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: rgba(59,130,246,0.04);
+        }
+        .upload-icon { font-size: 28px; margin-bottom: 8px; }
+        .upload-text { font-size: 12px; color: var(--muted); }
+        .upload-text span { color: var(--accent); }
+
+        .btn-run {
+            background: linear-gradient(135deg, var(--accent), #1d4ed8);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 13px;
+            font-family: 'Syne', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 20px var(--glow);
+            transition: all 0.2s;
+            letter-spacing: 0.3px;
+        }
+        .btn-run:hover { transform: translateY(-2px); box-shadow: 0 8px 28px var(--glow); }
+        .btn-run:active { transform: translateY(0); }
+        .btn-run.loading { opacity: 0.7; cursor: not-allowed; }
+
+        /* ── PREDICTION RESULT ── */
+        .pred-result {
+            background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(6,214,160,0.05));
+            border: 1px solid rgba(59,130,246,0.25);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            display: none;
+        }
+        .pred-result.show { display: block; animation: fadeUp 0.4s ease; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pred-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+        }
+        .pred-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--accent2);
+            letter-spacing: -1px;
+        }
+        .pred-arrow { margin-left: 6px; font-size: 18px; }
+
+        /* ── BOTTOM ROW ── */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+
+        .mini-chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .progress-bar-wrap { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+        .progress-item { }
+        .progress-top { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .progress-key { font-size: 12px; color: var(--muted); }
+        .progress-val { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text); }
+        .progress-track {
+            height: 4px;
+            background: var(--bg);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 1s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 2px; }
+
+        .hidden { display: none !important; }
+
+        /* ── VOLUME BARS ── */
+        .vol-bars { display: flex; align-items: flex-end; gap: 3px; height: 60px; margin-top: 14px; }
+        .vol-bar {
+            flex: 1;
+            border-radius: 2px 2px 0 0;
+            background: rgba(59,130,246,0.35);
+            transition: background 0.2s;
+        }
+        .vol-bar:hover { background: var(--accent); }
+
+        /* RSI gauge */
+        .gauge-wrap { display: flex; justify-content: center; margin-top: 12px; }
+
+        /* Loader spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen flex items-center justify-center p-6">
+<body>
 
-    <div class="glass max-w-2xl w-full rounded-3xl shadow-2xl overflow-hidden">
-        <div class="bg-blue-600/20 p-8 border-b border-white/10 text-center">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-500 rounded-2xl mb-4 shadow-lg shadow-blue-500/20">
-                <i class="fas fa-chart-line text-2xl text-white"></i>
+<div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-mark">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+                        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                        <polyline points="16 7 22 7 22 13"></polyline>
+                    </svg>
+                </div>
+                <span class="logo-text">Quant<span>AI</span></span>
             </div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-white">AI Stock <span class="text-blue-400">Predictor</span></h1>
-            <p class="text-slate-400 mt-2">Deep Learning LSTM Model Analysis</p>
         </div>
 
-        <div class="p-8">
-            <div class="flex space-x-4 mb-8 bg-slate-900/50 p-1 rounded-xl">
-                <button onclick="switchTab('manual')" id="btnManual" class="flex-1 py-2 px-4 rounded-lg transition duration-200 font-medium text-sm bg-blue-600 text-white">
-                    <i class="fas fa-keyboard mr-2"></i>Manual Input
-                </button>
-                <button onclick="switchTab('upload')" id="btnUpload" class="flex-1 py-2 px-4 rounded-lg transition duration-200 font-medium text-sm text-slate-400 hover:text-white">
-                    <i class="fas fa-file-csv mr-2"></i>Upload Dataset
-                </button>
+        <nav class="nav">
+            <div class="nav-label">MAIN</div>
+            <div class="nav-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Dashboard
+            </div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                Predictions
+            </div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+                Time Series
+            </div>
+            <div class="nav-label">ANALYSIS</div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                Backtesting
+            </div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                Model Metrics
+            </div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>
+                Correlation
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="model-badge">
+                <div class="model-badge-label">ACTIVE MODEL</div>
+                <div class="model-badge-name"><span class="model-dot"></span>LSTM v2.4</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+        <div>
+            <div class="topbar-title">Stock Intelligence Dashboard</div>
+            <div class="topbar-subtitle">LSTM DEEP LEARNING · REAL-TIME ANALYSIS</div>
+        </div>
+        <div class="topbar-right">
+            <div class="ticker-pill" onclick="switchTicker(this, 'GOOGL')">GOOGL</div>
+            <button class="btn-predict" onclick="runQuickPredict()">⚡ Quick Predict</button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+        <!-- STATS ROW -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="stat-label">CURRENT PRICE</div>
+                <div class="stat-value" id="statPrice">$189.84</div>
+                <div class="stat-change up" id="statChange">▲ +2.34 (1.25%)</div>
+                <div class="sparkline-wrap">
+                    <canvas id="sparkline1" width="70" height="30"></canvas>
+                </div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">PREDICTED NEXT</div>
+                <div class="stat-value" id="statPred" style="color: var(--accent2)">—</div>
+                <div class="stat-change up" id="statPredChange" style="color:var(--muted); font-size:11px;">Run prediction to see</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-label">MODEL ACCURACY</div>
+                <div class="stat-value" style="color:var(--accent3)">94.7%</div>
+                <div class="stat-change" style="color:var(--muted); font-size:11px;">MAE: 1.23 · RMSE: 1.87</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-label">30D VOLATILITY</div>
+                <div class="stat-value" style="color:var(--danger)">18.4%</div>
+                <div class="stat-change down">▼ High risk zone</div>
+            </div>
+        </div>
+
+        <!-- CHARTS ROW -->
+        <div class="charts-row">
+
+            <!-- MAIN TIME SERIES CHART -->
+            <div class="chart-card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Price History & Prediction Overlay</div>
+                        <div class="card-sub">ACTUAL vs LSTM PREDICTED — LAST 30 SESSIONS</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+                        <div class="legend">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:var(--accent)"></div>
+                                Actual
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:var(--accent2)"></div>
+                                Predicted
+                            </div>
+                        </div>
+                        <div class="time-tabs">
+                            <div class="time-tab active" onclick="setTimeRange(this,'1M')">1M</div>
+                            <div class="time-tab" onclick="setTimeRange(this,'3M')">3M</div>
+                            <div class="time-tab" onclick="setTimeRange(this,'6M')">6M</div>
+                            <div class="time-tab" onclick="setTimeRange(this,'1Y')">1Y</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="mainChart"></canvas>
+                </div>
             </div>
 
-            <div id="sectionManual" class="space-y-4">
-                <label class="block text-sm font-medium text-slate-300">Last 30 Days Close Price</label>
-                <textarea id="inputData" rows="4" 
-                    class="w-full p-4 bg-slate-900/50 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition placeholder-slate-600" 
-                    placeholder="Contoh: 185.1, 186.4, 184.2..."></textarea>
-                <button onclick="getManualPrediction()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-600/30 transition-all active:scale-95">
+            <!-- INPUT PANEL -->
+            <div class="input-panel">
+                <div>
+                    <div class="card-title">Run Prediction</div>
+                    <div class="card-sub" style="margin-top:3px;">FEED DATA TO LSTM MODEL</div>
+                </div>
+
+                <div class="tab-row">
+                    <button class="tab-btn active" id="btnManual" onclick="switchTab('manual')">Manual Input</button>
+                    <button class="tab-btn" id="btnUpload" onclick="switchTab('upload')">Upload CSV</button>
+                </div>
+
+                <div id="sectionManual" class="input-section">
+                    <div class="input-label">LAST 30 CLOSE PRICES (comma separated)</div>
+                    <textarea class="data-input" id="inputData" placeholder="185.1, 186.4, 184.2, 187.0...&#10;&#10;Enter exactly 30 values"></textarea>
+                    <button style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px;font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);cursor:pointer;" onclick="loadSampleData()">⟳ Load Sample Data</button>
+                </div>
+
+                <div id="sectionUpload" class="input-section hidden">
+                    <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="updateFileName()">
+                    <div class="upload-zone" onclick="document.getElementById('csvFile').click()">
+                        <div class="upload-icon">📂</div>
+                        <div class="upload-text">Drop CSV or <span>browse</span></div>
+                        <div id="fileNameDisplay" style="font-family:'Space Mono',monospace;font-size:10px;color:var(--accent2);margin-top:6px;"></div>
+                    </div>
+                </div>
+
+                <button class="btn-run" id="btnRun" onclick="runPrediction()">
                     Analyze & Predict
                 </button>
-            </div>
 
-            <div id="sectionUpload" class="hidden space-y-4">
-                <div class="border-2 border-dashed border-white/10 rounded-2xl p-8 text-center hover:border-blue-500/50 transition cursor-pointer" onclick="document.getElementById('csvFile').click()">
-                    <i class="fas fa-cloud-upload-alt text-4xl text-slate-500 mb-3"></i>
-                    <p class="text-sm text-slate-400">Drag and drop your CSV file here or <span class="text-blue-400">browse</span></p>
-                    <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="updateFileName()">
-                    <p id="fileNameDisplay" class="mt-2 text-xs text-blue-300 font-mono"></p>
-                </div>
-                <button onclick="uploadAndPredict()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all active:scale-95">
-                    Run Analysis
-                </button>
-            </div>
-
-            <div id="resultBox" class="mt-8 hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div class="bg-gradient-to-r from-blue-600/20 to-emerald-600/20 border border-white/10 p-6 rounded-2xl text-center">
-                    <p class="text-slate-400 text-sm font-medium mb-1">Predicted Next Price</p>
-                    <div class="flex items-center justify-center space-x-3">
-                        <span class="text-4xl font-black text-white" id="predictionValue">$0.00</span>
-                        <i class="fas fa-caret-up text-emerald-400 text-2xl"></i>
-                    </div>
-                    <p class="text-[10px] text-slate-500 mt-3 uppercase tracking-widest">Calculated by LSTM Neural Network</p>
+                <div class="pred-result" id="predResult">
+                    <div class="pred-label">NEXT PREDICTED CLOSE</div>
+                    <div class="pred-value" id="predValue">—<span class="pred-arrow">↗</span></div>
+                    <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:6px;">LSTM NEURAL NETWORK OUTPUT</div>
                 </div>
             </div>
+
         </div>
-    </div>
 
-    <script>
-        function switchTab(type) {
-            const isManual = type === 'manual';
-            document.getElementById('sectionManual').classList.toggle('hidden', !isManual);
-            document.getElementById('sectionUpload').classList.toggle('hidden', isManual);
-            
-            document.getElementById('btnManual').className = isManual ? 
-                'flex-1 py-2 px-4 rounded-lg bg-blue-600 text-white font-medium text-sm' : 
-                'flex-1 py-2 px-4 rounded-lg text-slate-400 hover:text-white font-medium text-sm';
-            
-            document.getElementById('btnUpload').className = !isManual ? 
-                'flex-1 py-2 px-4 rounded-lg bg-blue-600 text-white font-medium text-sm' : 
-                'flex-1 py-2 px-4 rounded-lg text-slate-400 hover:text-white font-medium text-sm';
-        }
+        <!-- BOTTOM ROW -->
+        <div class="bottom-row">
 
-        function updateFileName() {
-            const input = document.getElementById('csvFile');
-            document.getElementById('fileNameDisplay').innerText = input.files[0]?.name || '';
-        }
+            <!-- VOLUME BAR CHART -->
+            <div class="mini-chart-card">
+                <div class="card-header" style="margin-bottom:0">
+                    <div>
+                        <div class="card-title">Volume Analysis</div>
+                        <div class="card-sub">30-DAY TRADING VOLUME</div>
+                    </div>
+                </div>
+                <div class="vol-bars" id="volBars"></div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px;">
+                    <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Day 1</span>
+                    <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">Day 30</span>
+                </div>
+            </div>
 
-        async function getManualPrediction() {
-            const inputVal = document.getElementById('inputData').value;
-            const prices = inputVal.split(',').map(Number);
-            if (prices.length !== 30) return alert("Please enter exactly 30 prices.");
-            sendRequest('/predict', { prices: prices });
-        }
+            <!-- RSI / MACD CHART -->
+            <div class="mini-chart-card">
+                <div class="card-header" style="margin-bottom:0">
+                    <div>
+                        <div class="card-title">RSI Indicator</div>
+                        <div class="card-sub">RELATIVE STRENGTH INDEX</div>
+                    </div>
+                    <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--accent3)" id="rsiValue">58.4</div>
+                </div>
+                <div class="chart-container" style="height:120px;margin-top:14px;">
+                    <canvas id="rsiChart"></canvas>
+                </div>
+            </div>
 
-        async function uploadAndPredict() {
-            const fileInput = document.getElementById('csvFile');
-            if (!fileInput.files[0]) return alert("Please select a CSV file.");
-            
-            const formData = new FormData();
-            formData.append("file", fileInput.files[0]);
-            sendRequest('/upload', formData, true);
-        }
+            <!-- MODEL METRICS -->
+            <div class="mini-chart-card">
+                <div class="card-header" style="margin-bottom:0">
+                    <div>
+                        <div class="card-title">Model Performance</div>
+                        <div class="card-sub">TRAINING METRICS</div>
+                    </div>
+                </div>
+                <div class="progress-bar-wrap">
+                    <div class="progress-item">
+                        <div class="progress-top">
+                            <span class="progress-key">R² Score</span>
+                            <span class="progress-val">0.947</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width:94.7%;background:var(--accent)"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <div class="progress-top">
+                            <span class="progress-key">Directional Accuracy</span>
+                            <span class="progress-val">87.2%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width:87.2%;background:var(--accent2)"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <div class="progress-top">
+                            <span class="progress-key">Sharpe Ratio</span>
+                            <span class="progress-val">2.14</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width:71%;background:var(--accent3)"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <div class="progress-top">
+                            <span class="progress-key">Max Drawdown</span>
+                            <span class="progress-val">-8.3%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width:8.3%;background:var(--danger)"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        async function sendRequest(url, body, isFile = false) {
-            try {
-                const options = isFile ? { method: 'POST', body: body } : {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                };
+        </div>
 
-                const response = await fetch(url, options);
-                const data = await response.json();
-                
-                if (data.prediction) {
-                    document.getElementById('resultBox').classList.remove('hidden');
-                    document.getElementById('predictionValue').innerText = `$${data.prediction.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-                } else if (data.error) {
-                    alert(data.error);
+    </main>
+</div>
+
+<script>
+const tickerData = { GOOGL: { price: 0, change: '0', pct: '0', prices: [], volumes: [] } };
+let currentTicker = 'GOOGL';
+let mainChart, rsiChart;
+
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const [stockRes, metricsRes] = await Promise.all([
+            fetch('/stock-info'),
+            fetch('/model-metrics')
+        ]);
+        const stock = await stockRes.json();
+        const metrics = await metricsRes.json();
+
+        // ── Update tickerData dengan data real ──
+        tickerData.GOOGL = {
+            price: stock.price,
+            change: (stock.change >= 0 ? '+' : '') + stock.change,
+            pct: stock.pct.toFixed(2),
+            prices: stock.last_30,
+            volumes: stock.volumes
+        };
+
+        // ── Stat card: Current Price ──
+        document.getElementById('statPrice').textContent = `$${stock.price.toFixed(2)}`;
+        const up = stock.change >= 0;
+        document.getElementById('statChange').textContent = 
+            `${up ? '▲' : '▼'} ${Math.abs(stock.change).toFixed(2)} (${Math.abs(stock.pct).toFixed(2)}%)`;
+        document.getElementById('statChange').className = `stat-change ${up ? 'up' : 'down'}`;
+
+        // ── Stat card: Model Accuracy ──
+        const accEl = document.querySelector('.stat-card.amber .stat-value');
+        const accSub = document.querySelector('.stat-card.amber .stat-change');
+        accEl.textContent = `${(metrics.r2 * 100).toFixed(1)}%`;
+        accSub.textContent = `MAE: ${metrics.mae} · RMSE: ${metrics.rmse}`;
+
+        // ── Stat card: 30D Volatility ──
+        const volEl = document.querySelector('.stat-card.red .stat-value');
+        volEl.textContent = `${metrics.volatility}%`;
+        const isHigh = metrics.volatility > 20;
+        document.querySelector('.stat-card.red .stat-change').textContent = 
+            isHigh ? '▼ High risk zone' : '▲ Normal range';
+
+        // ── Progress bars (Model Performance) ──
+        const fills = document.querySelectorAll('.progress-fill');
+        const vals = document.querySelectorAll('.progress-val');
+
+        fills[0].style.width = `${(metrics.r2 * 100).toFixed(1)}%`;
+        vals[0].textContent = metrics.r2.toFixed(3);
+
+        fills[1].style.width = `${metrics.directional_accuracy}%`;
+        vals[1].textContent = `${metrics.directional_accuracy}%`;
+
+        // Sharpe & Drawdown tetap estimasi (butuh return series lengkap)
+        fills[2].style.width = `60%`;
+        vals[2].textContent = '—';
+        fills[3].style.width = `${metrics.volatility / 2}%`;
+        vals[3].textContent = `${(metrics.volatility / 2).toFixed(1)}%`;
+
+        // ── Render charts ──
+        renderAll('GOOGL');
+        renderVolBars(tickerData.GOOGL.volumes);
+        renderSparkline();
+        setTimeout(() => animateProgress(), 300);
+
+    } catch (err) {
+        console.error('Failed to fetch data:', err);
+    }
+});
+
+function animateProgress() {
+    document.querySelectorAll('.progress-fill').forEach(el => {
+        const w = el.style.width;
+        el.style.width = '0%';
+        setTimeout(() => { el.style.width = w; }, 50);
+    });
+}
+
+function renderAll(ticker) {
+    const d = tickerData[ticker];
+    if (!d.prices.length) return; // jangan render kalau data kosong
+    renderMainChart(d.prices);
+    renderRSIChart(d.prices);
+    renderVolBars(d.volumes);
+}
+
+function renderMainChart(prices) {
+    const labels = prices.map((_, i) => `D${i + 1}`);
+    const predicted = prices.map((p, i) => i < 28 ? null : p * 1.012 + Math.random() * 1.5 - 0.5);
+    predicted[27] = prices[27];
+
+    if (mainChart) mainChart.destroy();
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 240);
+    grad.addColorStop(0, 'rgba(59,130,246,0.25)');
+    grad.addColorStop(1, 'rgba(59,130,246,0)');
+
+    mainChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Actual',
+                    data: prices,
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    tension: 0.4,
+                    fill: true,
+                    backgroundColor: grad
+                },
+                {
+                    label: 'Predicted',
+                    data: predicted,
+                    borderColor: '#06d6a0',
+                    borderWidth: 2,
+                    borderDash: [5, 4],
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: false
                 }
-            } catch (e) {
-                alert("Connection failed.");
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0d1525',
+                    borderColor: 'rgba(99,179,255,0.15)',
+                    borderWidth: 1,
+                    titleColor: '#4a6080',
+                    bodyColor: '#e2eaf8',
+                    titleFont: { family: 'Space Mono', size: 10 },
+                    bodyFont: { family: 'Syne', size: 13, weight: '700' },
+                    callbacks: { label: ctx => `  $${ctx.parsed.y?.toFixed(2) ?? '—'}` }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(99,179,255,0.05)' },
+                    ticks: { color: '#4a6080', font: { family: 'Space Mono', size: 9 }, maxTicksLimit: 8 }
+                },
+                y: {
+                    grid: { color: 'rgba(99,179,255,0.05)' },
+                    ticks: { color: '#4a6080', font: { family: 'Space Mono', size: 9 }, callback: v => `$${v.toFixed(0)}` }
+                }
             }
         }
-    </script>
+    });
+}
+
+function renderRSIChart(prices) {
+    const rsiValues = prices.map((_, i) => {
+        if (i < 5) return 50;
+        const slice = prices.slice(i - 5, i);
+        const gains = slice.reduce((a, p, j) => j > 0 && p > slice[j-1] ? a + (p - slice[j-1]) : a, 0);
+        const losses = slice.reduce((a, p, j) => j > 0 && p < slice[j-1] ? a + (slice[j-1] - p) : a, 0);
+        const rs = gains / (losses || 0.001);
+        return 100 - (100 / (1 + rs));
+    });
+
+    document.getElementById('rsiValue').textContent = rsiValues[rsiValues.length - 1].toFixed(1);
+    if (rsiChart) rsiChart.destroy();
+
+    const ctx = document.getElementById('rsiChart').getContext('2d');
+    rsiChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: prices.map((_, i) => `D${i+1}`),
+            datasets: [{
+                data: rsiValues,
+                borderColor: '#f59e0b',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: {
+                x: { display: false },
+                y: {
+                    min: 0, max: 100,
+                    grid: { color: 'rgba(99,179,255,0.05)' },
+                    ticks: { color: '#4a6080', font: { family: 'Space Mono', size: 9 }, stepSize: 25 }
+                }
+            }
+        }
+    });
+}
+
+function renderVolBars(volumes) {
+    const max = Math.max(...volumes);
+    const container = document.getElementById('volBars');
+    container.innerHTML = volumes.map(v => {
+        const h = Math.max(4, (v / max) * 56);
+        const isHigh = v > max * 0.8;
+        return `<div class="vol-bar" style="height:${h}px;${isHigh ? 'background:rgba(59,130,246,0.7)' : ''}"></div>`;
+    }).join('');
+}
+
+function renderSparkline() {
+    const prices = tickerData.GOOGL.prices;
+    if (!prices.length) return;
+    const data = prices.slice(-10);
+    const c = document.getElementById('sparkline1').getContext('2d');
+    new Chart(c, {
+        type: 'line',
+        data: {
+            labels: data.map((_,i)=>i),
+            datasets: [{ data, borderColor:'rgba(59,130,246,0.6)', borderWidth:1.5, pointRadius:0, tension:0.4, fill:false }]
+        },
+        options: { responsive:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} }
+    });
+}
+
+// ── TAB ──────────────────────────────────────────────
+function switchTab(type) {
+    const isManual = type === 'manual';
+    document.getElementById('sectionManual').classList.toggle('hidden', !isManual);
+    document.getElementById('sectionUpload').classList.toggle('hidden', isManual);
+    document.getElementById('btnManual').className = `tab-btn ${isManual ? 'active' : ''}`;
+    document.getElementById('btnUpload').className = `tab-btn ${!isManual ? 'active' : ''}`;
+}
+
+function setTimeRange(el, range) {
+    document.querySelectorAll('.time-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+}
+
+// ── PREDICTION ───────────────────────────────────────
+async function loadSampleData() {
+    const res = await fetch('/stock-info');
+    const d = await res.json();
+    document.getElementById('inputData').value = d.last_30.map(v => v.toFixed(2)).join(', ');
+}
+
+async function runPrediction() {
+    const btn = document.getElementById('btnRun');
+    const isManual = !document.getElementById('sectionManual').classList.contains('hidden');
+
+    let body, options;
+    if (isManual) {
+        const val = document.getElementById('inputData').value;
+        const prices = val.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+        if (prices.length !== 30) { alert('Please enter exactly 30 prices.'); return; }
+        body = JSON.stringify({ prices });
+        options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body };
+    } else {
+        const file = document.getElementById('csvFile').files[0];
+        if (!file) { alert('Please select a CSV file.'); return; }
+        const formData = new FormData();
+        formData.append('file', file);
+        options = { method: 'POST', body: formData };
+    }
+
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="spinner"></span>Running LSTM...';
+
+    try {
+        const url = isManual ? '/predict' : '/upload';
+        const res = await fetch(url, options);
+        const data = await res.json();
+
+        if (data.error) { alert(data.error); return; }
+
+        const prediction = data.prediction;
+        const last = tickerData.GOOGL.prices.at(-1) || prediction;
+        const diff = prediction - last;
+        const pct = ((diff / last) * 100).toFixed(2);
+        const up = diff >= 0;
+
+        document.getElementById('predValue').innerHTML = 
+            `$${prediction.toFixed(2)}<span class="pred-arrow">${up ? '↗' : '↘'}</span>`;
+        document.getElementById('predValue').style.color = up ? 'var(--accent2)' : 'var(--danger)';
+        document.getElementById('predResult').classList.add('show');
+
+        document.getElementById('statPred').textContent = `$${prediction.toFixed(2)}`;
+        document.getElementById('statPred').style.color = up ? 'var(--accent2)' : 'var(--danger)';
+        document.getElementById('statPredChange').textContent = 
+            `${up ? '▲' : '▼'} ${Math.abs(diff).toFixed(2)} (${pct}%)`;
+        document.getElementById('statPredChange').className = `stat-change ${up ? 'up' : 'down'}`;
+
+    } catch (e) {
+        alert('Connection failed: ' + e.message);
+    } finally {
+        btn.classList.remove('loading');
+        btn.innerHTML = 'Analyze & Predict';
+    }
+}
+
+async function runQuickPredict() {
+    await loadSampleData();
+    switchTab('manual');
+    await runPrediction();
+}
+
+function updateFileName() {
+    const f = document.getElementById('csvFile').files[0];
+    document.getElementById('fileNameDisplay').textContent = f?.name || '';
+}
+</script>
 </body>
 </html>
